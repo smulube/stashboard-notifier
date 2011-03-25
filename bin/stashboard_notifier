@@ -1,0 +1,8 @@
+#!/usr/bin/env ruby
+#
+# Stub executable for stashboard_notifier
+
+require File.dirname(__FILE__) + '/../lib/stashboard_notifier'
+
+# load the lib
+StashboardNotifier::Parser.run

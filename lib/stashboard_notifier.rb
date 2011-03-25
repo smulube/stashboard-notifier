@@ -1,0 +1,3 @@
+module StashboardNotifier
+  # Your code goes here...
+end

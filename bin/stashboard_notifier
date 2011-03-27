@@ -1,8 +1,160 @@
 #!/usr/bin/env ruby
-#
-# Stub executable for stashboard_notifier
+# 1.9 adds realpath to resolve symlinks; 1.8 doesn't
+# have this method, so we add it so we get resolved symlinks
+# and compatibility
+unless File.respond_to? :realpath
+  class File #:nodoc:
+    def self.realpath path
+      return realpath(File.readlink(path)) if symlink?(path)
+      path
+    end
+  end
+end
 
-require File.dirname(__FILE__) + '/../lib/stashboard_notifier'
+$: << File.expand_path(File.dirname(File.realpath(__FILE__)) + '/../lib')
 
-# load the lib
-StashboardNotifier::Parser.run
+require 'rubygems'
+require 'bundler/setup'
+require 'gli'
+require 'stashboard_notifier'
+require 'stashboard'
+
+include GLI
+
+version StashboardNotifier::VERSION
+
+desc 'The url of your stashboard instance (should start with https)'
+arg_name '<stashboard_url>'
+flag [:stashboard]
+
+desc 'The oath token for accessing that stashboard'
+arg_name '<oauth_token>'
+flag [:oauth_token]
+
+desc 'The oath secret for accessing that stashboard'
+arg_name '<oauth_secret>'
+flag [:oauth_secret]
+
+config_file '.stashboard_notifier'
+
+desc 'Manage services currently managed by the stashboard instance'
+arg_name 'Describe arguments to services here'
+command :services do |c|
+  c.action do |global_options,options,args|
+
+    stashboard = get_stashboard(global_options)
+
+    services = stashboard.services
+
+    services.each do |service|
+      puts service["id"]
+    end
+
+    # If you have any errors, just raise them
+    # raise "that command made no sense"
+  end
+end
+
+
+desc 'Manage statuses currently managed by the stashboard instance'
+arg_name 'Describe arguments to statuses here'
+command :statuses do |c|
+
+  c.action do |global_options,options,args|
+
+    stashboard = get_stashboard(global_options)
+
+    statuses = stashboard.statuses
+
+    statuses.each do |status|
+      puts status["id"]
+    end
+
+    # If you have any errors, just raise them
+    # raise "that command made no sense"
+  end
+end
+
+desc 'Manage events for services'
+long_desc <<-EOS
+  This is the main command for sending event notifications to the stashboard
+  instance.  The service and status parameters are required, then the remaining
+  parameter is a string sent as a message associated with the event. As the
+  message might contain spaces, then you should wrapp the message in quotes,
+  else you won't get a sensible message.
+
+  Example usage:
+
+  $ stashboard_notifier events --service=website --status=down "The server is down"
+EOS
+command :events do |c|
+  c.desc "Service id this event is for (required)"
+  c.arg_name '<service_id>'
+  c.flag [:service]
+
+  c.desc "Status id for this event (required)"
+  c.arg_name '<status_id>'
+  c.flag [:status]
+
+  c.action do |global_options,options,args|
+    
+    if options[:service].nil?
+      #puts "Must specify a service with --service=<service_name>"
+      raise "Must specify a service" 
+    end
+    
+    if options[:status].nil?
+      raise "Must specify a status"
+    end
+
+    if args.size != 3
+      raise "Too many arguments"
+    end
+
+    stashboard = get_stashboard(global_options)
+
+    stashboard.create_event(options[:service], options[:status], args.last)
+     
+    # If you have any errors, just raise them
+    # raise "that command made no sense"
+  end
+end
+
+pre do |global,command,options,args|
+  # if global[:config_file]
+  #   require 'yaml'
+  #   
+  #   begin
+  #     config = YAML.load_file(global[:config_file])
+
+  #     global[:stashboard] = config["stashboard"] unless config["stashboard"].nil?
+  #     global[:oauth_token] = config["oauth_token"] unless config["oauth_token"].nil?
+  #     global[:oauth_secret] = config["oauth_secret"] unless config["oauth_secret"].nil?
+  #     
+  #   rescue Exception => e
+  #     msg = "Unable to load config file #{global[:config_file]}: #{e.inspect}"
+  #     puts msg
+  #     raise msg
+  #   end
+  # end
+  # Return true to proceed; false to abourt and not call the
+  # chosen command
+  true
+end
+
+post do |global,command,options,args|
+  # Post logic here
+end
+
+on_error do |exception|
+  puts "ERROR: #{exception.message}"
+  # Error logic here
+  # return false to skip default error handling
+  true
+end
+
+def get_stashboard(options)
+  Stashboard::Stashboard.new(options[:stashboard], options[:oauth_token], options[:oauth_secret])
+end
+
+exit GLI.run(ARGV)

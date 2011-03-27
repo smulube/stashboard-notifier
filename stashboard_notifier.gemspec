@@ -20,5 +20,5 @@ Gem::Specification.new do |s|
   s.require_paths = ["lib"]
 
   s.add_runtime_dependency("stashboard", [">= 0.0.2"])
-  s.add_runtime_dependency("trollop", [">= 1.16.2"])
+  s.add_runtime_dependency("gli", [">= 1.2.6"])
 end

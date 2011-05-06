@@ -107,8 +107,8 @@ command :events do |c|
       raise "Must specify a status"
     end
 
-    if args.size != 3
-      raise "Too many arguments"
+    if args.empty?
+      raise "Missing status message"
     end
 
     stashboard = get_stashboard(global_options)
